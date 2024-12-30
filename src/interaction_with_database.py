@@ -1,4 +1,7 @@
 import psycopg2
+from config import config
+from src.interaction_with_API import HeadHunterAPI
+
 from typing import Any
 import requests
 from abc import ABC, abstractmethod
@@ -31,9 +34,10 @@ class CreatingDatabaseTables(BaseDatabase):
         conn.autocommit = True
         cur = conn.cursor()
 
-        cur.execute(f"DROP DATABASE {self.database_name}")
+        cur.execute(f"DROP DATABASE IF EXISTS {self.database_name}")
         cur.execute(f"CREATE DATABASE {self.database_name}")
 
+        conn.close()
         cur.close()
 
         conn = psycopg2.connect(dbname=self.database_name, **self.params)
@@ -41,10 +45,10 @@ class CreatingDatabaseTables(BaseDatabase):
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE TABLE companies (
-                    companies_id SERIAL PRIMARY KEY,
+                    companies_id SERIAL,
                     name VARCHAR(255) NOT NULL,
                     companies_url VARCHAR(255),
-                    vacancies_url VARCHAR(255) NOT NULL,
+                    vacancies_url VARCHAR(255) PRIMARY KEY,
                     open_vacancies INTEGER
                 )
             """)
@@ -59,12 +63,12 @@ class CreatingDatabaseTables(BaseDatabase):
                     snippet text,
                     schedule VARCHAR(50),
                     experience VARCHAR(255),
-                    vacancies_url REFERENCES companies(vacancies_url),
+                    vacancies_url VARCHAR(255) REFERENCES companies(vacancies_url),
                     vacancy_url VARCHAR(255)
                 )
             """)
 
-        cur.close()
+        conn.commit()
         conn.close()
 
 
@@ -79,24 +83,28 @@ class CreatingDatabaseTables(BaseDatabase):
                 VALUES (%s, %s, %s, %s)
                 RETURNING companies_id""",
                             (company["name"], company["url"], company["vacancies_url"], company["open_vacancies"]))
-
-
                 vacancies_url_2 = company["vacancies_url"]
                 response = requests.get(url=vacancies_url_2)
                 response_to_json = response.json()
                 vacancies = response_to_json.get("items", [])
                 for vacancy in vacancies:
+                    salary_info = vacancy.get("salary")
+                    if not salary_info:
+                        salary_from = "Зарплата не указана"
+                        salary_to = "Зарплата не указана"
+                    else:
+                        salary_from = vacancy.get("salary").get("from", "Зарплата не указана")
+                        salary_to = vacancy.get("salary", {}).get("to", "Зарплата не указана")
                     cur.execute("""INSERT INTO vacancies(name, salary_from, salary_to, snippet, schedule, experience, vacancies_url, vacancy_url)
                                                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
                                 (vacancy.get("name"),
-                                 vacancy.get("salary", {}).get("from"),
-                                 vacancy.get("salary", {}).get("to"),
+                                 salary_from,
+                                 salary_to,
                                  vacancy.get("snippet", {}).get("requirement"),
                                  vacancy.get("schedule", {}).get("name"),
                                  vacancy.get("experience", {}).get("name"),
                                  vacancies_url_2,
                                  vacancy.get("url")))
-
 
         conn.commit()
         conn.close()

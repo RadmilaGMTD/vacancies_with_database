@@ -56,9 +56,3 @@ class HeadHunterAPI(Parser):
         """Получает 10 вакансий с наибольшим количеством открытых вакансий."""
         sorted_vacancies = sorted(self._vacancies, key=lambda i: i.get("open_vacancies"), reverse=True)
         return sorted_vacancies[:10]
-
-
-vacancies_ = HeadHunterAPI()
-rew = vacancies_.get_vacancies()
-res = vacancies_.top_10_vacancies()
-print(res)
