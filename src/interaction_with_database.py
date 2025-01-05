@@ -58,8 +58,8 @@ class CreatingDatabaseTables(BaseDatabase):
                 CREATE TABLE vacancies (
                     vacancies_id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
-                    salary_from VARCHAR(50),
-                    salary_to VARCHAR(50),
+                    salary_from INTEGER,
+                    salary_to INTEGER,
                     snippet text,
                     schedule VARCHAR(50),
                     experience VARCHAR(255),
@@ -90,13 +90,13 @@ class CreatingDatabaseTables(BaseDatabase):
                 for vacancy in vacancies:
                     salary_info = vacancy.get("salary")
                     if not salary_info:
-                        salary_from = "Зарплата не указана"
-                        salary_to = "Зарплата не указана"
+                        salary_from = 0
+                        salary_to = 0
                     else:
-                        salary_from = vacancy.get("salary").get("from", "Зарплата не указана")
-                        salary_to = vacancy.get("salary", {}).get("to", "Зарплата не указана")
+                        salary_from = vacancy.get("salary", {}).get("from", 0)
+                        salary_to = vacancy.get("salary", {}).get("to", 0)
                     cur.execute("""INSERT INTO vacancies(name, salary_from, salary_to, snippet, schedule, experience, vacancies_url, vacancy_url)
-                                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                                                    VALUES (%s, COALESCE(%s, 0), COALESCE(%s, 0), %s, %s, %s, %s, %s)""",
                                 (vacancy.get("name"),
                                  salary_from,
                                  salary_to,
