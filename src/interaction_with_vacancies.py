@@ -1,66 +1,71 @@
-from config import config
+from typing import List, Tuple
+
 import psycopg2
 
-from src.interaction_with_API import HeadHunterAPI
-from src.interaction_with_database import CreatingDatabaseTables
 
 class DBManager:
-    def __init__(self, database_name, params):
+    """Класс для работы с БД"""
+
+    def __init__(self, database_name: str, params: dict):
         self.database_name = database_name
         self.params = params
+        self.conn = psycopg2.connect(dbname=self.database_name, **self.params)
 
-    def get_list_companies(self):
-        """Получение списка всех компаний и количества вакансий у каждой компании"""
-
-        conn = psycopg2.connect(dbname=self.database_name, **self.params)
-        with conn.cursor() as cur:
-            cur.execute("""SELECT companies.name, COUNT(vacancies.vacancy_url) FROM companies
+    def get_list_companies(self) -> List[Tuple]:
+        """Получение списка всех компаний и количества вакансий у каждой компании."""
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """SELECT companies.name, COUNT(vacancies.vacancy_url) FROM companies
             LEFT JOIN vacancies USING(vacancies_url)
-            GROUP BY companies.name""")
+            GROUP BY companies.name"""
+            )
             result = cur.fetchall()
 
-        conn.commit()
-        conn.close()
+        self.conn.commit()
+        self.conn.close()
         return result
 
-    def get_list_companies_vacancies(self):
-        """Получение списка всех вакансий с указанием названия компании, названия вакансии, зарплаты и ссылки на вакансию."""
-        conn = psycopg2.connect(dbname=self.database_name, **self.params)
-        with conn.cursor() as cur:
-            cur.execute("""SELECT vacancies.name, companies.name, salary_from, salary_to, vacancy_url FROM vacancies
-            LEFT JOIN companies using(vacancies_url)""")
+    def get_list_companies_vacancies(self) -> List[Tuple]:
+        """Получение списка всех вакансий с указанием названия компании, вакансии, зарплаты и ссылки."""
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """SELECT vacancies.name, companies.name, salary_from, salary_to, vacancy_url FROM vacancies
+            LEFT JOIN companies using(vacancies_url)"""
+            )
             result = cur.fetchall()
 
-        conn.commit()
-        conn.close()
+        self.conn.commit()
+        self.conn.close()
         return result
 
-    def get_avg_salary(self):
-        conn = psycopg2.connect(dbname=self.database_name, **self.params)
-        with conn.cursor() as cur:
+    def get_avg_salary(self) -> List[Tuple]:
+        """Получает среднюю зарплату по вакансиям."""
+        with self.conn.cursor() as cur:
             cur.execute("""SELECT AVG(salary_from) FROM vacancies""")
             result = cur.fetchall()
 
-        conn.commit()
-        conn.close()
+        self.conn.commit()
+        self.conn.close()
         return result
 
-    def get_vacancies_with_higher_salary(self):
-        conn = psycopg2.connect(dbname=self.database_name, **self.params)
-        with conn.cursor() as cur:
-            cur.execute("""SELECT *
+    def get_vacancies_with_higher_salary(self) -> List[Tuple]:
+        """Получает список всех вакансий, у которых зарплата выше средней по всем вакансиям."""
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """SELECT *
             FROM vacancies
-            WHERE salary_from > (SELECT AVG(salary_from) FROM vacancies)""")
+            WHERE salary_from > (SELECT avg(salary_from) FROM vacancies WHERE salary_from != 0)"""
+            )
             result = cur.fetchall()
-        conn.commit()
-        conn.close()
+        self.conn.commit()
+        self.conn.close()
         return result
 
-    def get_vacancies_with_keyword(self, keyword):
-        conn = psycopg2.connect(dbname=self.database_name, **self.params)
-        with conn.cursor() as cur:
+    def get_vacancies_with_keyword(self, keyword: str) -> List[Tuple]:
+        """Получает список всех вакансий, в названии которых содержатся переданные в метод слова."""
+        with self.conn.cursor() as cur:
             cur.execute(f"""SELECT * FROM vacancies WHERE name LIKE '%{keyword}%'""")
             result = cur.fetchall()
-        conn.commit()
-        conn.close()
+        self.conn.commit()
+        self.conn.close()
         return result

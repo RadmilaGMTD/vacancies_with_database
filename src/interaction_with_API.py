@@ -13,7 +13,7 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def get_vacancies(self, max_pages: int = 20) -> list:
+    def get_vacancies(self, keyword: str = "", max_pages: int = 20) -> list:
         """Получает необходимые вакансии по ключевому слову."""
         pass
 
@@ -29,7 +29,7 @@ class HeadHunterAPI(Parser):
     def __init__(self) -> None:
         """Инициализирует класс HeadHunterAPI и задает начальные параметры."""
         self.__headers = {"User-Agent": "HH-User-Agent"}
-        self.__params = {"text": "", "page": 0, "per_page": 0, 'only_with_vacancies' : True}
+        self.__params = {"text": "", "page": 0, "per_page": 0, "only_with_vacancies": True}
         self._vacancies = []
 
     def _connection_to_api(self) -> Any:
@@ -51,8 +51,7 @@ class HeadHunterAPI(Parser):
             self.__params["page"] += 1
         return self._vacancies
 
-
-    def top_10_vacancies(self):
+    def top_10_vacancies(self) -> list:
         """Получает 10 вакансий с наибольшим количеством открытых вакансий."""
         sorted_vacancies = sorted(self._vacancies, key=lambda i: i.get("open_vacancies"), reverse=True)
         return sorted_vacancies[:10]
