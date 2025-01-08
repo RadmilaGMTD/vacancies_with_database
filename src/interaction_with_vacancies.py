@@ -11,18 +11,20 @@ class DBManager:
         self.params = params
         self.conn = psycopg2.connect(dbname=self.database_name, **self.params)
 
+    def close(self):
+        """Закрывает соединение с базой данных."""
+        if self.conn:
+            self.conn.close()
+
     def get_list_companies(self) -> List[Tuple]:
         """Получение списка всех компаний и количества вакансий у каждой компании."""
         with self.conn.cursor() as cur:
             cur.execute(
                 """SELECT companies.name, COUNT(vacancies.vacancy_url) FROM companies
-            LEFT JOIN vacancies USING(vacancies_url)
+            LEFT JOIN vacancies ON companies.companies_id=vacancies.companies_id
             GROUP BY companies.name"""
             )
             result = cur.fetchall()
-
-        self.conn.commit()
-        self.conn.close()
         return result
 
     def get_list_companies_vacancies(self) -> List[Tuple]:
@@ -30,12 +32,10 @@ class DBManager:
         with self.conn.cursor() as cur:
             cur.execute(
                 """SELECT vacancies.name, companies.name, salary_from, salary_to, vacancy_url FROM vacancies
-            LEFT JOIN companies using(vacancies_url)"""
+            LEFT JOIN companies ON vacancies.companies_id=companies.companies_id"""
             )
             result = cur.fetchall()
 
-        self.conn.commit()
-        self.conn.close()
         return result
 
     def get_avg_salary(self) -> List[Tuple]:
@@ -43,9 +43,6 @@ class DBManager:
         with self.conn.cursor() as cur:
             cur.execute("""SELECT AVG(salary_from) FROM vacancies""")
             result = cur.fetchall()
-
-        self.conn.commit()
-        self.conn.close()
         return result
 
     def get_vacancies_with_higher_salary(self) -> List[Tuple]:
@@ -57,8 +54,6 @@ class DBManager:
             WHERE salary_from > (SELECT avg(salary_from) FROM vacancies WHERE salary_from != 0)"""
             )
             result = cur.fetchall()
-        self.conn.commit()
-        self.conn.close()
         return result
 
     def get_vacancies_with_keyword(self, keyword: str) -> List[Tuple]:
@@ -66,6 +61,4 @@ class DBManager:
         with self.conn.cursor() as cur:
             cur.execute(f"""SELECT * FROM vacancies WHERE name LIKE '%{keyword}%'""")
             result = cur.fetchall()
-        self.conn.commit()
-        self.conn.close()
         return result

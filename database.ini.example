@@ -1,0 +1,6 @@
+# Создайте файл database.ini из копии этого файла и замените значения переменных реальными данными
+[your_database]
+host=your_host
+user=your_username
+password=your_password
+port=your_port

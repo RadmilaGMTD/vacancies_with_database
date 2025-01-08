@@ -45,10 +45,9 @@ class CreatingDatabaseTables(BaseDatabase):
             cur.execute(
                 """
                 CREATE TABLE companies (
-                    companies_id SERIAL,
+                    companies_id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     companies_url VARCHAR(255),
-                    vacancies_url VARCHAR(255) PRIMARY KEY,
                     open_vacancies INTEGER
                 )
             """
@@ -65,7 +64,7 @@ class CreatingDatabaseTables(BaseDatabase):
                     snippet text,
                     schedule VARCHAR(50),
                     experience VARCHAR(255),
-                    vacancies_url VARCHAR(255) REFERENCES companies(vacancies_url),
+                    companies_id INTEGER REFERENCES companies(companies_id),
                     vacancy_url VARCHAR(255)
                 )
             """
@@ -80,11 +79,12 @@ class CreatingDatabaseTables(BaseDatabase):
         with conn.cursor() as cur:
             for company in data:
                 cur.execute(
-                    """INSERT INTO companies(name, companies_url, vacancies_url, open_vacancies)
-                VALUES (%s, %s, %s, %s)
+                    """INSERT INTO companies(name, companies_url, open_vacancies)
+                VALUES (%s, %s, %s)
                 RETURNING companies_id""",
-                    (company["name"], company["url"], company["vacancies_url"], company["open_vacancies"]),
+                    (company["name"], company["url"], company["open_vacancies"]),
                 )
+                companies_id = cur.fetchone()[0]
                 vacancies_url_2 = company["vacancies_url"]
                 response = requests.get(url=vacancies_url_2)
                 response_to_json = response.json()
@@ -99,7 +99,7 @@ class CreatingDatabaseTables(BaseDatabase):
                         salary_to = vacancy.get("salary", {}).get("to", 0)
                     cur.execute(
                         """INSERT INTO vacancies(name, salary_from, salary_to, snippet, schedule,
-                        experience, vacancies_url, vacancy_url)
+                        experience, vacancy_url, companies_id)
                         VALUES (%s, COALESCE(%s, 0), COALESCE(%s, 0), %s, %s, %s, %s, %s)""",
                         (
                             vacancy.get("name"),
@@ -109,7 +109,7 @@ class CreatingDatabaseTables(BaseDatabase):
                             vacancy.get("schedule", {}).get("name"),
                             vacancy.get("experience", {}).get("name"),
                             vacancies_url_2,
-                            vacancy.get("url"),
+                            companies_id,
                         ),
                     )
 
